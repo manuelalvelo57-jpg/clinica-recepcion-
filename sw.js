@@ -1,4 +1,4 @@
-const CACHE_NAME = 'cliniflow-v1';
+const CACHE_NAME = 'Biomed-v1';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',

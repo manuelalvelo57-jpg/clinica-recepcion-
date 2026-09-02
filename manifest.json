@@ -1,5 +1,5 @@
 {
-  "name": "CliniFlow - Recepción PWA",
+  "name": "Biomed - Recepción PWA",
   "short_name": "CliniFlow",
   "description": "Sistema de recepción y facturación clínica offline-first",
   "start_url": "./index.html",
