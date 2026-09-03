@@ -3,346 +3,726 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Biomed - Recepción</title>
+    <meta name="theme-color" content="#2563eb">
+    <title>Biomed - Obstetricia & Ecografía</title>
+    <link rel="manifest" href="manifest.json">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-</head>
-<body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen flex flex-col">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
 
-    <!-- Header -->
-    <header class="bg-indigo-600 text-white shadow-md">
+    <style>
+        @media print {
+            header, nav, button, .no-print {
+                display: none !important;
+            }
+            body {
+                background-color: #ffffff !important;
+                color: #000000 !important;
+            }
+            main {
+                max-width: 100% !important;
+                width: 100% !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+            section {
+                display: block !important;
+            }
+            section.hidden {
+                display: none !important;
+            }
+            .shadow-sm, .border {
+                box-shadow: none !important;
+                border: none !important;
+            }
+            input, textarea, select {
+                border: none !important;
+                background: transparent !important;
+                resize: none !important;
+            }
+            .print-header {
+                display: block !important;
+            }
+        }
+        .print-header {
+            display: none;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans min-h-screen flex flex-col">
+
+    <header class="bg-blue-600 text-white shadow-md no-print">
         <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
             <div class="flex items-center space-x-3">
-                <i class="fa-solid fa-notes-medical text-2xl"></i>
-                <h1 class="text-xl font-bold tracking-wide">CliniFlow <span class="text-xs bg-indigo-500 px-2 py-0.5 rounded-full uppercase tracking-wider font-normal">Recepción PWA</span></h1>
+                <i class="fa-solid fa-baby-carriage text-2xl text-blue-200"></i>
+                <div>
+                    <h1 class="text-xl font-bold tracking-wide">Biomed <span class="text-xs bg-blue-500 px-2 py-0.5 rounded-full font-normal">Obstetricia & Ecografía</span></h1>
+                </div>
             </div>
             <div class="flex items-center space-x-4 text-sm">
-                <span id="offline-badge" class="hidden bg-amber-500 text-white px-2 py-1 rounded text-xs"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Modo Offline</span>
-                <span><i class="fa-regular fa-clock mr-1"></i> <span id="current-time"></span></span>
+                <span id="db-status" class="bg-emerald-500 text-white px-2 py-1 rounded text-xs flex items-center">
+                    <i class="fa-solid fa-database mr-1"></i> SQL Activo
+                </span>
+                <button onclick="exportDatabase()" class="bg-blue-700 hover:bg-blue-800 px-3 py-1 rounded text-xs flex items-center transition">
+                    <i class="fa-solid fa-download mr-1"></i> Respaldar SQL
+                </button>
             </div>
         </div>
     </header>
 
-    <!-- Navigation Tabs -->
-    <nav class="bg-white border-b border-slate-200 shadow-sm">
-        <div class="max-w-7xl mx-auto px-4 flex space-x-8">
-            <button onclick="switchTab('pacientes')" id="btn-pacientes" class="py-3 px-1 border-b-2 border-indigo-600 font-medium text-sm text-indigo-600 flex items-center space-x-2">
-                <i class="fa-solid fa-user-plus"></i><span>Pacientes</span>
+    <nav class="bg-white border-b border-slate-200 shadow-sm no-print">
+        <div class="max-w-7xl mx-auto px-4 flex space-x-6 overflow-x-auto">
+            <button onclick="switchTab('control')" id="tab-btn-control" class="py-3 px-2 border-b-2 border-blue-600 font-semibold text-sm text-blue-600 flex items-center space-x-2">
+                <i class="fa-solid fa-calculator"></i><span>Calculadora Obstétrica & Consulta</span>
             </button>
-            <button onclick="switchTab('caja')" id="btn-caja" class="py-3 px-1 border-b-2 border-transparent font-medium text-sm text-slate-500 hover:text-slate-700 flex items-center space-x-2">
-                <i class="fa-solid fa-cash-register"></i><span>Caja & Facturación</span>
+            <button onclick="switchTab('ecografia')" id="tab-btn-ecografia" class="py-3 px-2 border-b-2 border-transparent font-medium text-sm text-slate-500 hover:text-slate-700 flex items-center space-x-2">
+                <i class="fa-solid fa-display"></i><span>Informe Ecográfico</span>
+            </button>
+            <button onclick="switchTab('recipe')" id="tab-btn-recipe" class="py-3 px-2 border-b-2 border-transparent font-medium text-sm text-slate-500 hover:text-slate-700 flex items-center space-x-2">
+                <i class="fa-solid fa-prescription"></i><span>Tratamiento y Récipe</span>
+            </button>
+            <button onclick="switchTab('historial')" id="tab-btn-historial" class="py-3 px-2 border-b-2 border-transparent font-medium text-sm text-slate-500 hover:text-slate-700 flex items-center space-x-2">
+                <i class="fa-solid fa-folder-open"></i><span>Base de Datos de Pacientes</span>
             </button>
         </div>
     </nav>
 
-    <!-- Main Container -->
-    <main class="flex-grow max-w-7xl w-full mx-auto p-4 md:p-6">
+    <main class="flex-grow max-w-7xl w-full mx-auto p-4 md:p-6 space-y-6">
 
-        <!-- TAB: PACIENTES -->
-        <section id="tab-pacientes" class="space-y-6">
+        <div class="print-header border-b-2 border-blue-600 pb-4 mb-4">
+            <h1 class="text-2xl font-bold text-blue-700">UNIDAD DE OBSTETRICIA Y ECOGRAFÍA - BIOMED</h1>
+            <div id="print-patient-summary" class="text-sm mt-2 grid grid-cols-2 gap-2">
+                </div>
+        </div>
+
+        <section id="sec-control" class="space-y-6">
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <!-- Formulario Registro -->
-                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 lg:col-span-1">
-                    <h2 class="text-lg font-semibold text-slate-700 mb-4 flex items-center">
-                        <i class="fa-solid fa-id-card text-indigo-600 mr-2"></i>Nuevo Registro
-                    </h2>
-                    <form id="patient-form" onsubmit="registerPatient(event)" class="space-y-4">
-                        <div>
-                            <label class="block text-xs font-semibold uppercase text-slate-500 mb-1">Nombre Completo</label>
-                            <input type="text" id="p-name" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
-                        </div>
-                        <div class="grid grid-cols-2 gap-2">
-                            <div>
-                                <label class="block text-xs font-semibold uppercase text-slate-500 mb-1">Cédula / ID</label>
-                                <input type="text" id="p-id" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-semibold uppercase text-slate-500 mb-1">Teléfono</label>
-                                <input type="tel" id="p-phone" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
-                            </div>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-semibold uppercase text-slate-500 mb-1">Servicio Requerido</label>
-                            <select id="p-service" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm bg-white">
-                                <option value="Consulta Ginecoobstetricia">Consulta Ginecoobstetricia</option>
-                                <option value="Ecografía">Ecografía</option>
-                                <option value="Laboratorio">Laboratorio</option>
-                            </select>
-                        </div>
-                        <div id="gine-fields" class="space-y-4 pt-2 border-t border-slate-100">
-                            <label class="block text-xs font-bold uppercase text-indigo-600">Datos Ginecoobstétricos</label>
-                            <div class="grid grid-cols-3 gap-2">
-                                <div>
-                                    <label class="block text-[10px] text-slate-400 uppercase">Gestas (G)</label>
-                                    <input type="number" id="p-gestas" value="0" min="0" class="w-full px-2 py-1.5 border border-slate-300 rounded text-sm">
-                                </div>
-                                <div>
-                                    <label class="block text-[10px] text-slate-400 uppercase">Partos (P)</label>
-                                    <input type="number" id="p-partos" value="0" min="0" class="w-full px-2 py-1.5 border border-slate-300 rounded text-sm">
-                                </div>
-                                <div>
-                                    <label class="block text-[10px] text-slate-400 uppercase">Cesáreas (C)</label>
-                                    <input type="number" id="p-cesareas" value="0" min="0" class="w-full px-2 py-1.5 border border-slate-300 rounded text-sm">
-                                </div>
-                            </div>
-                        </div>
-                        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200 text-sm shadow-sm">
-                            Guardar y Pasar a Caja
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 lg:col-span-1 space-y-4">
+                    <div class="flex justify-between items-center border-b pb-2">
+                        <h2 class="text-lg font-bold text-slate-800 flex items-center">
+                            <i class="fa-solid fa-person-pregnant text-blue-600 mr-2"></i>Cálculo Gestacional
+                        </h2>
+                        <button onclick="clearForm()" class="text-xs text-slate-500 hover:text-red-600 no-print" title="Limpiar formulario">
+                            <i class="fa-solid fa-rotate-right"></i> Limpiar
                         </button>
-                    </form>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Nombre de la Paciente</label>
+                        <input type="text" id="p-name" placeholder="Ej: María Delgado" class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Cédula / ID</label>
+                            <input type="text" id="p-id" placeholder="V-12345678" class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Edad</label>
+                            <input type="number" id="p-age" placeholder="28" class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                        </div>
+                    </div>
+
+                    <div class="bg-blue-50 p-4 rounded-xl border border-blue-100 space-y-3">
+                        <div>
+                            <label class="block text-xs font-bold text-blue-800 uppercase mb-1">Fecha Última Menstruación (FUM)</label>
+                            <input type="date" id="p-fum" onchange="calculateObstetrics()" class="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2 pt-2 border-t border-blue-200">
+                            <div>
+                                <span class="block text-[11px] font-semibold text-blue-600 uppercase">Edad Gestacional</span>
+                                <span id="res-eg" class="text-lg font-extrabold text-slate-800">-- sem</span>
+                            </div>
+                            <div>
+                                <span class="block text-[11px] font-semibold text-blue-600 uppercase">FPP (Regla Naegele)</span>
+                                <span id="res-fpp" class="text-sm font-bold text-slate-800">--/--/----</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Fórmula Obstétrica</label>
+                        <div class="grid grid-cols-4 gap-1">
+                            <input type="number" id="p-g" placeholder="G" title="Gestas" class="px-2 py-1 text-center border rounded text-sm">
+                            <input type="number" id="p-p" placeholder="P" title="Partos" class="px-2 py-1 text-center border rounded text-sm">
+                            <input type="number" id="p-c" placeholder="C" title="Cesáreas" class="px-2 py-1 text-center border rounded text-sm">
+                            <input type="number" id="p-a" placeholder="A" title="Abortos" class="px-2 py-1 text-center border rounded text-sm">
+                        </div>
+                    </div>
                 </div>
 
-                <!-- Tabla de Pacientes del Día -->
-                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 lg:col-span-2 flex flex-col">
-                    <h2 class="text-lg font-semibold text-slate-700 mb-4 flex items-center justify-between">
-                        <span><i class="fa-solid fa-hospital-user text-indigo-600 mr-2"></i>Pacientes Registrados Hoy</span>
-                        <span id="patient-count" class="text-xs bg-indigo-50 text-indigo-600 px-2.5 py-1 rounded-full font-bold">0 pacientes</span>
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 lg:col-span-2 space-y-4">
+                    <h2 class="text-lg font-bold text-slate-800 flex items-center border-b pb-2">
+                        <i class="fa-solid fa-notes-medical text-blue-600 mr-2"></i>Evolución Control Prenatal
                     </h2>
-                    <div class="overflow-x-auto flex-grow">
-                        <table class="w-full text-left border-collapse">
-                            <thead>
-                                <tr class="border-b border-slate-200 text-xs font-semibold text-slate-400 uppercase">
-                                    <th class="py-3 px-2">Paciente</th>
-                                    <th class="py-3 px-2">ID</th>
-                                    <th class="py-3 px-2">Servicio</th>
-                                    <th class="py-3 px-2">Estatus</th>
-                                    <th class="py-3 px-2 text-right">Acción</th>
-                                </tr>
-                            </thead>
-                            <tbody id="patients-table-body" class="text-sm divide-y divide-slate-100">
-                                <tr>
-                                    <td colspan="5" class="py-8 text-center text-slate-400 italic">No hay pacientes registrados hoy</td>
-                                </tr>
-                            </tbody>
-                        </table>
+
+                    <div class="grid grid-cols-3 gap-3">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-500 mb-1">Tensión Arterial (TA)</label>
+                            <input type="text" id="p-ta" placeholder="120/80 mmHg" class="w-full px-3 py-2 border rounded-lg text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-500 mb-1">Peso (kg)</label>
+                            <input type="number" step="0.1" id="p-peso" placeholder="65.5" class="w-full px-3 py-2 border rounded-lg text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-500 mb-1">Altura Uterina (AU)</label>
+                            <input type="text" id="p-au" placeholder="22 cm" class="w-full px-3 py-2 border rounded-lg text-sm">
+                        </div>
                     </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 mb-1">Hallazgos Clínicos / Examen Físico</label>
+                        <textarea id="p-hallazgos" rows="3" placeholder="Foco fetal presente (FCF: 145 bpm), sin edemas, cuello uterino cerrado..." class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"></textarea>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 mb-1">Plan / Indicaciones Generales</label>
+                        <textarea id="p-plan" rows="2" placeholder="Continuar vitaminas prenatales, solicitar perfil 20 + examen de orina en Biomed..." class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"></textarea>
+                    </div>
+
+                    <button onclick="savePatientConsultation()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-lg shadow transition text-sm flex items-center justify-center no-print">
+                        <i class="fa-solid fa-floppy-disk mr-2"></i>Guardar Consulta en Base de Datos SQL
+                    </button>
                 </div>
             </div>
         </section>
 
-        <!-- TAB: CAJA -->
-        <section id="tab-caja" class="hidden space-y-6">
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <!-- Facturación Form -->
-                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 lg:col-span-1">
-                    <h2 class="text-lg font-semibold text-slate-700 mb-4 flex items-center">
-                        <i class="fa-solid fa-file-invoice-dollar text-emerald-600 mr-2"></i>Emitir Factura / Recibo
+        <section id="sec-ecografia" class="hidden space-y-6">
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-6">
+                <div class="flex justify-between items-center border-b pb-2">
+                    <h2 class="text-lg font-bold text-slate-800 flex items-center">
+                        <i class="fa-solid fa-wave-square text-blue-600 mr-2"></i>Informe de Ecografía Obstétrica
                     </h2>
-                    <form id="invoice-form" onsubmit="generateInvoice(event)" class="space-y-4">
-                        <div>
-                            <label class="block text-xs font-semibold uppercase text-slate-500 mb-1">Seleccionar Paciente</label>
-                            <select id="inv-patient" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm bg-white">
-                                <option value="">-- Seleccione un paciente pendiente --</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-semibold uppercase text-slate-500 mb-1">Concepto del Servicio</label>
-                            <input type="text" id="inv-concept" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm">
-                        </div>
-                        <div class="grid grid-cols-2 gap-2">
-                            <div>
-                                <label class="block text-xs font-semibold uppercase text-slate-500 mb-1">Monto ($)</label>
-                                <input type="number" step="0.01" id="inv-amount" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-semibold uppercase text-slate-500 mb-1">Método de Pago</label>
-                                <select id="inv-method" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm bg-white">
-                                    <option value="Efectivo">Efectivo</option>
-                                    <option value="Tarjeta">Tarjeta</option>
-                                    <option value="Pago Móvil / Transferencia">Transferencia</option>
-                                </select>
-                            </div>
-                        </div>
-                        <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200 text-sm shadow-sm">
-                            Procesar Pago & Facturar
-                        </button>
-                    </form>
+                    <span id="active-patient-badge" class="text-xs bg-slate-100 text-slate-600 px-3 py-1 rounded-full border">
+                        Paciente no seleccionada
+                    </span>
                 </div>
 
-                <!-- Historial de Facturas / Tickets -->
-                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 lg:col-span-2 flex flex-col">
-                    <h2 class="text-lg font-semibold text-slate-700 mb-4 flex items-center justify-between">
-                        <span><i class="fa-solid fa-receipt text-emerald-600 mr-2"></i>Comprobantes Emitidos</span>
-                        <span id="invoice-count" class="text-xs bg-emerald-50 text-emerald-600 px-2.5 py-1 rounded-full font-bold">0 facturas</span>
-                    </h2>
-                    <div class="overflow-x-auto flex-grow">
-                        <table class="w-full text-left border-collapse">
-                            <thead>
-                                <tr class="border-b border-slate-200 text-xs font-semibold text-slate-400 uppercase">
-                                    <th class="py-3 px-2"># Recibo</th>
-                                    <th class="py-3 px-2">Paciente</th>
-                                    <th class="py-3 px-2">Concepto</th>
-                                    <th class="py-3 px-2">Monto</th>
-                                    <th class="py-3 px-2 text-right">Acción</th>
-                                </tr>
-                            </thead>
-                            <tbody id="invoices-table-body" class="text-sm divide-y divide-slate-100">
-                                <tr>
-                                    <td colspan="5" class="py-8 text-center text-slate-400 italic">No hay cobros procesados hoy</td>
-                                </tr>
-                            </tbody>
-                        </table>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 mb-1">Tipo de Estudio</label>
+                        <select id="eco-tipo" onchange="toggleDopplerFields()" class="w-full px-3 py-2 border rounded-lg text-sm bg-white">
+                            <option value="Obstétrico I Trimestre">Obstétrico I Trimestre</option>
+                            <option value="Obstétrico II-III Trimestre" selected>Obstétrico II-III Trimestre</option>
+                            <option value="Ecografía Pélvica/Transvaginal">Ecografía Pélvica / Transvaginal</option>
+                            <option value="Doppler Feto-Placentario">Doppler Feto-Placentario</option>
+                        </select>
                     </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 mb-1">Frecuencia Cardíaca Fetal (FCF)</label>
+                        <input type="text" id="eco-fcf" placeholder="148 bpm" class="w-full px-3 py-2 border rounded-lg text-sm">
+                    </div>
+                </div>
+
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                    <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider">Biometría Fetal y Cálculo de Hadlock</h3>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-500 mb-1">CRL / LCN (mm)</label>
+                            <input type="number" id="eco-crl" oninput="calculateBiometry()" placeholder="45" class="w-full px-3 py-1.5 border rounded-lg text-sm bg-white">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-500 mb-1">DBP (mm)</label>
+                            <input type="number" id="eco-dbp" oninput="calculateBiometry()" placeholder="52" class="w-full px-3 py-1.5 border rounded-lg text-sm bg-white">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-500 mb-1">CC - Circ. Cefálica (mm)</label>
+                            <input type="number" id="eco-cc" oninput="calculateBiometry()" placeholder="190" class="w-full px-3 py-1.5 border rounded-lg text-sm bg-white">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-500 mb-1">CA - Circ. Abdominal (mm)</label>
+                            <input type="number" id="eco-ca" oninput="calculateBiometry()" placeholder="170" class="w-full px-3 py-1.5 border rounded-lg text-sm bg-white">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 md:grid-cols-3 gap-3 pt-2">
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-500 mb-1">LF - Long. Fémur (mm)</label>
+                            <input type="number" id="eco-lf" oninput="calculateBiometry()" placeholder="40" class="w-full px-3 py-1.5 border rounded-lg text-sm bg-white">
+                        </div>
+                        <div class="bg-blue-100 p-2 rounded-lg border border-blue-200 text-center">
+                            <span class="block text-[10px] font-bold text-blue-700 uppercase">Peso Est. Fetal (Hadlock)</span>
+                            <span id="res-pef" class="text-base font-extrabold text-blue-900">-- g</span>
+                        </div>
+                        <div class="bg-blue-100 p-2 rounded-lg border border-blue-200 text-center">
+                            <span class="block text-[10px] font-bold text-blue-700 uppercase">EG Estimada por Biometría</span>
+                            <span id="res-eg-eco" class="text-base font-extrabold text-blue-900">-- sem</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 mb-1">Placenta</label>
+                        <select id="eco-placenta" class="w-full px-3 py-2 border rounded-lg text-sm bg-white">
+                            <option value="Anterior, Grado 0">Anterior, Grado 0</option>
+                            <option value="Anterior, Grado I" selected>Anterior, Grado I</option>
+                            <option value="Posterior, Grado I">Posterior, Grado I</option>
+                            <option value="Posterior, Grado II">Posterior, Grado II</option>
+                            <option value="Fúndica, Grado II">Fúndica, Grado II</option>
+                            <option value="Previa / Inserción Baja">Previa / Inserción Baja</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 mb-1">Líquido Amniótico (ILA)</label>
+                        <input type="text" id="eco-la" value="Normal (ILA conservado / 12 cm)" class="w-full px-3 py-2 border rounded-lg text-sm">
+                    </div>
+                </div>
+
+                <div id="doppler-container" class="bg-indigo-50 p-4 rounded-xl border border-indigo-100 space-y-3">
+                    <h3 class="text-xs font-bold text-indigo-800 uppercase tracking-wider flex items-center">
+                        <i class="fa-solid fa-heart-pulse mr-1.5"></i> Evaluación Hemodinámica Doppler
+                    </h3>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div>
+                            <label class="block text-[11px] font-semibold text-indigo-700 mb-1">IP Art. Umbilical (AU)</label>
+                            <input type="number" step="0.01" id="eco-ip-au" oninput="calculateDoppler()" placeholder="0.95" class="w-full px-2 py-1 border rounded text-sm bg-white">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-semibold text-indigo-700 mb-1">IP Art. Cer. Media (ACM)</label>
+                            <input type="number" step="0.01" id="eco-ip-acm" oninput="calculateDoppler()" placeholder="1.65" class="w-full px-2 py-1 border rounded text-sm bg-white">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-semibold text-indigo-700 mb-1">Notch Art. Uterinas</label>
+                            <select id="eco-notch" class="w-full px-2 py-1 border rounded text-sm bg-white">
+                                <option value="Ausente">Ausente</option>
+                                <option value="Unilateral">Unilateral</option>
+                                <option value="Bilateral">Bilateral</option>
+                            </select>
+                        </div>
+                        <div class="bg-indigo-100 p-1.5 rounded border border-indigo-200 text-center">
+                            <span class="block text-[10px] font-bold text-indigo-800 uppercase">Relación CPR (ACM/AU)</span>
+                            <span id="res-cpr" class="text-sm font-extrabold text-indigo-950">--</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <label class="block text-xs font-semibold text-slate-500">Plantillas de Diagnóstico / Conclusión Rápida</label>
+                    <div class="flex flex-wrap gap-2 no-print">
+                        <button onclick="setEcoTemplate('normo')" class="bg-slate-100 hover:bg-slate-200 text-xs text-slate-700 px-3 py-1 rounded-full border">
+                            + Gestación Normoevolutiva
+                        </button>
+                        <button onclick="setEcoTemplate('primer_trimestre')" class="bg-slate-100 hover:bg-slate-200 text-xs text-slate-700 px-3 py-1 rounded-full border">
+                            + I Trimestre Vital
+                        </button>
+                        <button onclick="setEcoTemplate('doppler_normal')" class="bg-slate-100 hover:bg-slate-200 text-xs text-slate-700 px-3 py-1 rounded-full border">
+                            + Doppler Normal
+                        </button>
+                    </div>
+
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">Diagnóstico / Conclusión Ecográfica</label>
+                    <textarea id="eco-conclusion" rows="4" placeholder="Embarazo simple intrauterino..." class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"></textarea>
+                </div>
+
+                <div class="flex space-x-3 no-print">
+                    <button onclick="saveEcoReport()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-semibold flex items-center">
+                        <i class="fa-solid fa-floppy-disk mr-2"></i>Guardar Informe SQL
+                    </button>
+                    <button onclick="printEcoReport()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold flex items-center">
+                        <i class="fa-solid fa-print mr-2"></i>Imprimir Informe Ecográfico
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <section id="sec-recipe" class="hidden space-y-6">
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-4">
+                <h2 class="text-lg font-bold text-slate-800 flex items-center border-b pb-2">
+                    <i class="fa-solid fa-file-prescription text-blue-600 mr-2"></i>Emisión de Récipe y Tratamiento
+                </h2>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 no-print">
+                    <div class="md:col-span-2">
+                        <label class="block text-xs font-semibold text-slate-500 mb-1">Plantillas Rápidas de Medicamentos Prenatales</label>
+                        <div class="flex flex-wrap gap-2">
+                            <button onclick="addMedicine('Ácido Fólico 5mg: Tomar 1 tableta diaria VO.')" class="bg-slate-100 hover:bg-slate-200 text-xs text-slate-700 px-3 py-1 rounded-full border">
+                                + Ácido Fólico
+                            </button>
+                            <button onclick="addMedicine('Hierro + Ácido Fólico: Tomar 1 cápsula diaria con el almuerzo.')" class="bg-slate-100 hover:bg-slate-200 text-xs text-slate-700 px-3 py-1 rounded-full border">
+                                + Hierro Prenatal
+                            </button>
+                            <button onclick="addMedicine('Calcio 600mg + Vitamina D: Tomar 1 tableta cada 12 horas.')" class="bg-slate-100 hover:bg-slate-200 text-xs text-slate-700 px-3 py-1 rounded-full border">
+                                + Calcio
+                            </button>
+                            <button onclick="addMedicine('Progesterona 200mg: 1 óvulo vía vaginal cada noche por 10 días.')" class="bg-slate-100 hover:bg-slate-200 text-xs text-slate-700 px-3 py-1 rounded-full border">
+                                + Progesterona
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">Indicaciones / Récipe Médico</label>
+                    <textarea id="recipe-text" rows="6" placeholder="1. Ácido Fólico 5mg - 1 Tab diaria.&#10;2. Calcio 600mg - 1 Tab cada 12 horas..." class="w-full px-3 py-2 border rounded-lg text-sm font-mono focus:ring-2 focus:ring-blue-500 outline-none"></textarea>
+                </div>
+
+                <div class="flex space-x-3 no-print">
+                    <button onclick="printRecipe()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold flex items-center">
+                        <i class="fa-solid fa-print mr-2"></i>Imprimir Récipe Biomed
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <section id="sec-historial" class="hidden space-y-6">
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-4">
+                <div class="flex justify-between items-center border-b pb-2">
+                    <h2 class="text-lg font-bold text-slate-800 flex items-center">
+                        <i class="fa-solid fa-database text-blue-600 mr-2"></i>Registro de Pacientes en Disco (SQL)
+                    </h2>
+                    <input type="text" id="search-sql" onkeyup="searchDatabase()" placeholder="Buscar por Nombre o Cédula..." class="px-3 py-1 border rounded-lg text-sm w-64 no-print">
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b text-xs font-bold text-slate-500 uppercase bg-slate-50">
+                                <th class="py-2 px-3">Fecha</th>
+                                <th class="py-2 px-3">Cédula</th>
+                                <th class="py-2 px-3">Paciente</th>
+                                <th class="py-2 px-3">FUM</th>
+                                <th class="py-2 px-3">EG Estimada</th>
+                                <th class="py-2 px-3 no-print">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sql-patients-table" class="text-sm divide-y divide-slate-100">
+                            </tbody>
+                    </table>
                 </div>
             </div>
         </section>
 
     </main>
 
-    <!-- Script de lógica de la PWA local -->
     <script>
-        // Reloj en tiempo real
-        function updateClock() {
-            const now = new Date();
-            document.getElementById('current-time').innerText = now.toLocaleTimeString();
-        }
-        setInterval(updateClock, 1000);
-        updateClock();
+        let db;
+        let activePatientId = null;
 
-        // Control de pestañas
-        function switchTab(tab) {
-            document.getElementById('tab-pacientes').classList.add('hidden');
-            document.getElementById('tab-caja').classList.add('hidden');
-            document.getElementById('btn-pacientes').className = "py-3 px-1 border-b-2 border-transparent font-medium text-sm text-slate-500 hover:text-slate-700 flex items-center space-x-2";
-            document.getElementById('btn-caja').className = "py-3 px-1 border-b-2 border-transparent font-medium text-sm text-slate-500 hover:text-slate-700 flex items-center space-x-2";
-
-            if (tab === 'pacientes') {
-                document.getElementById('tab-pacientes').classList.remove('hidden');
-                document.getElementById('btn-pacientes').className = "py-3 px-1 border-b-2 border-indigo-600 font-medium text-sm text-indigo-600 flex items-center space-x-2";
-            } else {
-                document.getElementById('tab-caja').classList.remove('hidden');
-                document.getElementById('btn-caja').className = "py-3 px-1 border-b-2 border-emerald-600 font-medium text-sm text-emerald-600 flex items-center space-x-2";
-                updateInvoicePatientSelect();
-            }
-        }
-
-        // Simulación de almacenamiento LocalStorage
-        let patients = JSON.parse(localStorage.getItem('cliniflow_patients')) || [];
-        let invoices = JSON.parse(localStorage.getItem('cliniflow_invoices')) || [];
-
-        function saveData() {
-            localStorage.setItem('cliniflow_patients', JSON.stringify(patients));
-            localStorage.setItem('cliniflow_invoices', JSON.stringify(invoices));
-            renderTables();
-        }
-
-        // Registro de paciente
-        function registerPatient(e) {
-            e.preventDefault();
-            const newPatient = {
-                id: 'P-' + Date.now().toString().slice(-4),
-                name: document.getElementById('p-name').value,
-                docId: document.getElementById('p-id').value,
-                phone: document.getElementById('p-phone').value,
-                service: document.getElementById('p-service').value,
-                gestas: document.getElementById('p-gestas').value,
-                partos: document.getElementById('p-partos').value,
-                cesareas: document.getElementById('p-cesareas').value,
-                status: 'Pendiente de Pago',
-                date: new Date().toLocaleDateString()
-            };
-
-            patients.unshift(newPatient);
-            saveData();
-            document.getElementById('patient-form').reset();
-            alert('¡Paciente registrado con éxito!');
-        }
-
-        // Rellenar selector de pacientes para facturación (solo pendientes)
-        function updateInvoicePatientSelect() {
-            const select = document.getElementById('inv-patient');
-            select.innerHTML = '<option value="">-- Seleccione un paciente pendiente --</option>';
-            patients.filter(p => p.status === 'Pendiente de Pago').forEach(p => {
-                const opt = document.createElement('option');
-                opt.value = p.id;
-                opt.textContent = `${p.name} (${p.service})`;
-                select.appendChild(opt);
+        // Registrar Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('Service Worker registrado:', reg.scope))
+                    .catch(err => console.log('Error Service Worker:', err));
             });
         }
 
-        // Generar Factura
-        function generateInvoice(e) {
-            e.preventDefault();
-            const patientId = document.getElementById('inv-patient').value;
-            const patient = patients.find(p => p.id === patientId);
-
-            if (!patient) return;
-
-            const newInvoice = {
-                code: 'FAC-' + Date.now().toString().slice(-4),
-                patientName: patient.name,
-                concept: document.getElementById('inv-concept').value,
-                amount: parseFloat(document.getElementById('inv-amount').value).toFixed(2),
-                method: document.getElementById('inv-method').value,
-                date: new Date().toLocaleDateString()
-            };
-
-            invoices.unshift(newInvoice);
-            patient.status = 'Pagado / En Proceso';
-            saveData();
-            document.getElementById('invoice-form').reset();
-            alert('¡Factura emitida correctamente!');
+        // Inicialización de SQLite WebAssembly
+        async function initSQL() {
+            try {
+                const SQL = await initSqlJs({
+                    locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/${file}`
+                });
+                
+                const savedDb = localStorage.getItem('biomed_obstetricia_db');
+                if (savedDb) {
+                    const uInt8Array = new Uint8Array(JSON.parse(savedDb));
+                    db = new SQL.Database(uInt8Array);
+                } else {
+                    db = new SQL.Database();
+                    db.run(`
+                        CREATE TABLE IF NOT EXISTS pacientes (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            fecha TEXT,
+                            cedula TEXT,
+                            nombre TEXT,
+                            edad INTEGER,
+                            fum TEXT,
+                            fpp TEXT,
+                            formula_obstetrica TEXT,
+                            ta TEXT,
+                            peso REAL,
+                            hallazgos TEXT
+                        );
+                        CREATE TABLE IF NOT EXISTS ecografias (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            paciente_id INTEGER,
+                            fecha TEXT,
+                            tipo TEXT,
+                            crl REAL,
+                            dbp REAL,
+                            cc REAL,
+                            ca REAL,
+                            lf REAL,
+                            pef REAL,
+                            placenta TEXT,
+                            ila TEXT,
+                            fcf TEXT,
+                            conclusion TEXT,
+                            FOREIGN KEY(paciente_id) REFERENCES pacientes(id)
+                        );
+                    `);
+                    saveDatabaseToStorage();
+                }
+                loadPatientsTable();
+            } catch (e) {
+                console.error("Error al inicializar SQLite", e);
+            }
         }
 
-        // Renderizar Tablas
-        function renderTables() {
-            // Tabla Pacientes
-            const pBody = document.getElementById('patients-table-body');
-            document.getElementById('patient-count').textContent = `${patients.length} pacientes`;
-            if (patients.length === 0) {
-                pBody.innerHTML = `<tr><td colspan="5" class="py-8 text-center text-slate-400 italic">No hay pacientes registrados hoy</td></tr>`;
+        function saveDatabaseToStorage() {
+            const data = db.export();
+            const buffer = Array.from(data);
+            localStorage.setItem('biomed_obstetricia_db', JSON.stringify(buffer));
+        }
+
+        function exportDatabase() {
+            const data = db.export();
+            const blob = new Blob([data], { type: 'application/x-sqlite3' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `biomed_obstetricia_${new Date().toISOString().slice(0,10)}.sqlite`;
+            a.click();
+        }
+
+        function calculateObstetrics() {
+            const fumInput = document.getElementById('p-fum').value;
+            if (!fumInput) return;
+
+            const fumDate = new Date(fumInput + 'T00:00:00');
+            const today = new Date();
+            
+            const diffTime = today - fumDate;
+            if (diffTime < 0) {
+                document.getElementById('res-eg').innerText = `-- sem`;
+                document.getElementById('res-fpp').innerText = `--/--/----`;
+                return;
+            }
+
+            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+            const weeks = Math.floor(diffDays / 7);
+            const days = diffDays % 7;
+
+            document.getElementById('res-eg').innerText = `${weeks}+${days} sem`;
+
+            const fppDate = new Date(fumDate);
+            fppDate.setDate(fppDate.getDate() + 280);
+            document.getElementById('res-fpp').innerText = fppDate.toLocaleDateString('es-ES');
+        }
+
+        function calculateBiometry() {
+            const crl = parseFloat(document.getElementById('eco-crl').value) || 0;
+            const dbp = parseFloat(document.getElementById('eco-dbp').value) || 0;
+            const cc = parseFloat(document.getElementById('eco-cc').value) || 0;
+            const ca = parseFloat(document.getElementById('eco-ca').value) || 0;
+            const lf = parseFloat(document.getElementById('eco-lf').value) || 0;
+
+            // Fórmula de Hadlock para PEF: Log10(BW) = 1.335 - 0.0034(AC*FL) + 0.0316(BPD) + 0.0457(AC) + 0.0923(FL) [Medidas en cm]
+            if (dbp > 0 && ca > 0 && lf > 0) {
+                const dbpCm = dbp / 10;
+                const caCm = ca / 10;
+                const lfCm = lf / 10;
+
+                const logBW = 1.335 - (0.0034 * caCm * lfCm) + (0.0316 * dbpCm) + (0.0457 * caCm) + (0.0923 * lfCm);
+                const pef = Math.round(Math.pow(10, logBW));
+                document.getElementById('res-pef').innerText = `${pef} g`;
             } else {
-                pBody.innerHTML = patients.map(p => `
-                    <tr class="hover:bg-slate-50 transition">
-                        <td class="py-3 px-2 font-medium text-slate-700">${p.name}<br><span class="text-xs text-slate-400">${p.phone}</span></td>
-                        <td class="py-3 px-2 text-slate-600">${p.docId}</td>
-                        <td class="py-3 px-2"><span class="bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-xs font-medium">${p.service}</span></td>
-                        <td class="py-3 px-2">
-                            <span class="px-2 py-1 rounded-full text-xs font-semibold ${p.status === 'Pagado / En Proceso' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}">
-                                ${p.status}
-                            </span>
-                        </td>
-                        <td class="py-3 px-2 text-right">
-                            <button onclick="printTicket('${p.id}')" class="text-indigo-600 hover:text-indigo-800 p-1" title="Imprimir Ticket de Cita"><i class="fa-solid fa-print"></i></button>
+                document.getElementById('res-pef').innerText = `-- g`;
+            }
+
+            // Estimación aproximada de EG por FL o DBP
+            if (lf > 0) {
+                const egSemanas = Math.round((lf * 0.15) + 9);
+                document.getElementById('res-eg-eco').innerText = `~${egSemanas} sem`;
+            } else if (crl > 0) {
+                const egSemanas = Math.round((crl + 42) / 7);
+                document.getElementById('res-eg-eco').innerText = `~${egSemanas} sem`;
+            } else {
+                document.getElementById('res-eg-eco').innerText = `-- sem`;
+            }
+        }
+
+        function calculateDoppler() {
+            const ipAu = parseFloat(document.getElementById('eco-ip-au').value) || 0;
+            const ipAcm = parseFloat(document.getElementById('eco-ip-acm').value) || 0;
+
+            if (ipAu > 0 && ipAcm > 0) {
+                const cpr = (ipAcm / ipAu).toFixed(2);
+                document.getElementById('res-cpr').innerText = cpr;
+            } else {
+                document.getElementById('res-cpr').innerText = '--';
+            }
+        }
+
+        function setEcoTemplate(type) {
+            const area = document.getElementById('eco-conclusion');
+            const eg = document.getElementById('res-eg').innerText;
+            const pef = document.getElementById('res-pef').innerText;
+
+            if (type === 'normo') {
+                area.value = `Gestación intrauterina única de ${eg} por FUM. Feto activo, con movimientos cardiacos y somáticos presentes. Biometría acorde. Peso fetal estimado en ${pef}. Líquido amniótico y placenta de morfología normal.`;
+            } else if (type === 'primer_trimestre') {
+                area.value = `Embarazo intrauterino normoevolutivo de primer trimestre. Se aprecia embrión único vital con actividad cardiaca presente. Longitud cráneo-caudal acorde para la edad gestacional. Sin evidencias de hematomas retrocoriales.`;
+            } else if (type === 'doppler_normal') {
+                area.value = `Estudio Doppler feto-placentario dentro de límites normales. Índices de pulsatilidad hemodinámicos conservados en arteria umbilical y arteria cerebral media. Relación cerebro-placentaria (CPR) adecuada. Sin signos de redistribución de flujo.`;
+            }
+        }
+
+        function toggleDopplerFields() {
+            const tipo = document.getElementById('eco-tipo').value;
+            const container = document.getElementById('doppler-container');
+            if (tipo === 'Doppler Feto-Placentario') {
+                container.classList.remove('hidden');
+            } else {
+                container.classList.add('hidden');
+            }
+        }
+
+        function savePatientConsultation() {
+            const name = document.getElementById('p-name').value;
+            const cedula = document.getElementById('p-id').value;
+            const edad = document.getElementById('p-age').value;
+            const fum = document.getElementById('p-fum').value;
+            const fpp = document.getElementById('res-fpp').innerText;
+            const fo = `G:${document.getElementById('p-g').value||0} P:${document.getElementById('p-p').value||0} C:${document.getElementById('p-c').value||0} A:${document.getElementById('p-a').value||0}`;
+            const ta = document.getElementById('p-ta').value;
+            const peso = document.getElementById('p-peso').value;
+            const hallazgos = document.getElementById('p-hallazgos').value;
+            const fecha = new Date().toLocaleDateString('es-ES');
+
+            if (!name || !cedula) {
+                alert('Por favor ingrese el nombre y la cédula de la paciente.');
+                return;
+            }
+
+            db.run(`INSERT INTO pacientes (fecha, cedula, nombre, edad, fum, fpp, formula_obstetrica, ta, peso, hallazgos) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, 
+                    [fecha, cedula, name, edad, fum, fpp, fo, ta, peso, hallazgos]);
+
+            saveDatabaseToStorage();
+            alert('¡Consulta guardada exitosamente en la base de datos SQL local!');
+            loadPatientsTable();
+        }
+
+        function saveEcoReport() {
+            if (!activePatientId) {
+                alert("Por favor active primero una paciente desde el registro para asociar la ecografía.");
+                return;
+            }
+            const fecha = new Date().toLocaleDateString('es-ES');
+            const tipo = document.getElementById('eco-tipo').value;
+            const crl = parseFloat(document.getElementById('eco-crl').value) || 0;
+            const dbp = parseFloat(document.getElementById('eco-dbp').value) || 0;
+            const cc = parseFloat(document.getElementById('eco-cc').value) || 0;
+            const ca = parseFloat(document.getElementById('eco-ca').value) || 0;
+            const lf = parseFloat(document.getElementById('eco-lf').value) || 0;
+            const pef = parseFloat(document.getElementById('res-pef').innerText) || 0;
+            const placenta = document.getElementById('eco-placenta').value;
+            const ila = document.getElementById('eco-la').value;
+            const fcf = document.getElementById('eco-fcf').value;
+            const conclusion = document.getElementById('eco-conclusion').value;
+
+            db.run(`INSERT INTO ecografias (paciente_id, fecha, tipo, crl, dbp, cc, ca, lf, pef, placenta, ila, fcf, conclusion) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                    [activePatientId, fecha, tipo, crl, dbp, cc, ca, lf, pef, placenta, ila, fcf, conclusion]);
+
+            saveDatabaseToStorage();
+            alert("¡Informe ecográfico guardado con éxito!");
+        }
+
+        function loadPatientsTable(filter = '') {
+            const tbody = document.getElementById('sql-patients-table');
+            tbody.innerHTML = '';
+
+            let query = "SELECT * FROM pacientes ORDER BY id DESC";
+            let params = [];
+
+            if (filter) {
+                query = "SELECT * FROM pacientes WHERE nombre LIKE ? OR cedula LIKE ? ORDER BY id DESC";
+                params = [`%${filter}%`, `%${filter}%`];
+            }
+
+            const stmt = db.prepare(query);
+            stmt.bind(params);
+
+            while (stmt.step()) {
+                const r = stmt.get();
+                tbody.innerHTML += `
+                    <tr class="hover:bg-slate-50">
+                        <td class="py-2 px-3">${r[1]}</td>
+                        <td class="py-2 px-3 font-semibold">${r[2]}</td>
+                        <td class="py-2 px-3">${r[3]} (${r[4] || '--'}a)</td>
+                        <td class="py-2 px-3">${r[5] || '--'}</td>
+                        <td class="py-2 px-3 font-bold text-blue-600">${r[6] || '--'}</td>
+                        <td class="py-2 px-3 no-print">
+                            <button onclick="selectPatient('${r[0]}')" class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200 transition">Cargar</button>
                         </td>
                     </tr>
-                `).join('');
+                `;
             }
-
-            // Tabla Facturas
-            const iBody = document.getElementById('invoices-table-body');
-            document.getElementById('invoice-count').textContent = `${invoices.length} facturas`;
-            if (invoices.length === 0) {
-                iBody.innerHTML = `<tr><td colspan="5" class="py-8 text-center text-slate-400 italic">No hay cobros procesados hoy</td></tr>`;
-            } else {
-                iBody.innerHTML = invoices.map(i => `
-                    <tr class="hover:bg-slate-50 transition">
-                        <td class="py-3 px-2 font-medium text-slate-700">${i.code}</td>
-                        <td class="py-3 px-2 text-slate-600">${i.patientName}</td>
-                        <td class="py-3 px-2 text-slate-600">${i.concept}</td>
-                        <td class="py-3 px-2 font-bold text-emerald-600">$${i.amount}</td>
-                        <td class="py-3 px-2 text-right">
-                            <button onclick="alert('Imprimiendo recibo ${i.code}...')" class="text-emerald-600 hover:text-emerald-800 p-1" title="Imprimir Recibo Fiscal"><i class="fa-solid fa-file-invoice"></i></button>
-                        </td>
-                    </tr>
-                `).join('');
-            }
+            stmt.free();
         }
 
-        function printTicket(id) {
-            const p = patients.find(item => item.id === id);
-            if (p) {
-                alert(`Imprimiendo ticket de cita para: ${p.name}\nServicio: ${p.service}\nID: ${p.id}`);
+        function selectPatient(id) {
+            activePatientId = id;
+            const stmt = db.prepare("SELECT * FROM pacientes WHERE id = ?");
+            stmt.bind([id]);
+            if (stmt.step()) {
+                const r = stmt.get();
+                document.getElementById('p-id').value = r[2] || '';
+                document.getElementById('p-name').value = r[3] || '';
+                document.getElementById('p-age').value = r[4] || '';
+                document.getElementById('p-fum').value = r[5] || '';
+                document.getElementById('p-ta').value = r[8] || '';
+                document.getElementById('p-peso').value = r[9] || '';
+                document.getElementById('p-hallazgos').value = r[10] || '';
+                
+                document.getElementById('active-patient-badge').innerText = `Paciente Activa: ${r[3]} (${r[2]})`;
+                
+                // Actualizar vista de impresión
+                document.getElementById('print-patient-summary').innerHTML = `
+                    <div><strong>Paciente:</strong> ${r[3]}</div>
+                    <div><strong>Cédula:</strong> ${r[2]}</div>
+                    <div><strong>Edad:</strong> ${r[4] || '--'} años</div>
+                    <div><strong>FUM:</strong> ${r[5] || '--'}</div>
+                `;
+
+                calculateObstetrics();
+                switchTab('control');
             }
+            stmt.free();
         }
 
-        // Control de conectividad Offline/Online
-        window.addEventListener('online', () => document.getElementById('offline-badge').classList.add('hidden'));
-        window.addEventListener('offline', () => document.getElementById('offline-badge').classList.remove('hidden'));
-        if(!navigator.onLine) document.getElementById('offline-badge').classList.remove('hidden');
+        function searchDatabase() {
+            const query = document.getElementById('search-sql').value;
+            loadPatientsTable(query);
+        }
 
-        // Cargar datos iniciales al abrir
-        renderTables();
+        function clearForm() {
+            ['p-name', 'p-id', 'p-age', 'p-fum', 'p-g', 'p-p', 'p-c', 'p-a', 'p-ta', 'p-peso', 'p-au', 'p-hallazgos', 'p-plan'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = '';
+            });
+            document.getElementById('res-eg').innerText = '-- sem';
+            document.getElementById('res-fpp').innerText = '--/--/----';
+            activePatientId = null;
+            document.getElementById('active-patient-badge').innerText = 'Paciente no seleccionada';
+        }
+
+        function addMedicine(text) {
+            const area = document.getElementById('recipe-text');
+            area.value += (area.value ? '\n' : '') + text;
+        }
+
+        function switchTab(tab) {
+            ['control', 'ecografia', 'recipe', 'historial'].forEach(t => {
+                document.getElementById(`sec-${t}`).classList.add('hidden');
+                document.getElementById(`tab-btn-${t}`).className = "py-3 px-2 border-b-2 border-transparent font-medium text-sm text-slate-500 hover:text-slate-700 flex items-center space-x-2";
+            });
+
+            document.getElementById(`sec-${tab}`).classList.remove('hidden');
+            document.getElementById(`tab-btn-${tab}`).className = "py-3 px-2 border-b-2 border-blue-600 font-semibold text-sm text-blue-600 flex items-center space-x-2";
+        }
+
+        function printEcoReport() { window.print(); }
+        function printRecipe() { window.print(); }
+
+        window.onload = () => { 
+            initSQL(); 
+            toggleDopplerFields();
+        };
     </script>
 </body>
 </html>

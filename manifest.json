@@ -1,24 +1,22 @@
 {
-  "name": "Biomed - Recepción PWA",
-  "short_name": "CliniFlow",
-  "description": "Sistema de recepción y facturación clínica offline-first",
+  "name": "Biomed - Obstetricia & Ecografía",
+  "short_name": "Biomed Obs",
+  "description": "Sistema de Control Prenatal, Ecografía con Biometría Hadlock y Récipe Médico Biomed",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#f8fafc",
-  "theme_color": "#4f46e5",
+  "background_color": "#2563eb",
+  "theme_color": "#2563eb",
   "orientation": "any",
   "icons": [
     {
       "src": "icons/icon-192.png",
       "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "type": "image/png"
     },
     {
       "src": "icons/icon-512.png",
       "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "type": "image/png"
     }
   ]
 }
